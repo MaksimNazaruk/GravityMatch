@@ -17,6 +17,7 @@ public class BoardManager : MonoBehaviour {
 	public GameObject redMarble;
 
 	private Marble[,] marbles;
+	private bool needUpdateMarblePositions;
 
 	private Vector2 originOffset = new Vector2 (0, 0);
 	private Vector2[,] tilePositions;
@@ -29,7 +30,7 @@ public class BoardManager : MonoBehaviour {
 		SetupMarbles ();
 
 		// debug
-		ApplyGravity (GravityDirection.Down);
+//		ApplyGravity (GravityDirection.Down);
 	}
 
 	private void CalculateOriginOffset () {
@@ -125,13 +126,14 @@ public class BoardManager : MonoBehaviour {
 		}
 	}
 
-	void UpdateMarblePositions () {
+	void UpdateMarblePositionsAnimated () {
 		for (int y = 0; y < yBoardSize; y++) {
 			for (int x = 0; x < xBoardSize; x++) {
 				if (marbles [x, y] != null) {
 					GameObject marbleObject = marbles [x, y].marbleObject;
 					Vector2 position = tilePositions [x, y];
-					marbleObject.transform.position = new Vector3 (position.x, position.y, 0);
+					Vector3 newPosition = new Vector3 (position.x, position.y, 0);
+					marbleObject.transform.position = Vector3.Lerp (marbleObject.transform.position, newPosition, 20 * Time.deltaTime);
 				}
 			}
 		}
@@ -210,36 +212,21 @@ public class BoardManager : MonoBehaviour {
 		}
 
 		marbles = newMarbles;
-		UpdateMarblePositions ();
+		needUpdateMarblePositions = true;
 	}
 
 	void GravityChanged(GravityDirection newDirection) {
-//		MarbleType type;
-//		switch (newDirection) {
-//		case GravityDirection.Left:
-//			type = MarbleType.Blue;
-//			break;
-//		case GravityDirection.Up:
-//			type = MarbleType.Green;
-//			break;
-//		case GravityDirection.Right:
-//			type = MarbleType.Red;
-//			break;
-//		case GravityDirection.Down:
-//			type = MarbleType.Orange;
-//			break;
-//		default:
-//			type = MarbleType.Red;
-//			break;
-//		}
-//
+
 		ApplyGravity (newDirection);
 		AddMarble ();
 	}
 
 	// Update is called once per frame
 	void Update () {
-		
+		if (needUpdateMarblePositions) {
+//			needUpdateMarblePositions = false;
+			UpdateMarblePositionsAnimated ();
+		}
 	}
 
 	// ##### Controls #####
