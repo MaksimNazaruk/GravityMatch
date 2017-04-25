@@ -17,7 +17,7 @@ public class BoardManager : MonoBehaviour {
 	public GameObject redMarble;
 
 	private Marble[,] marbles;
-	private bool needUpdateMarblePositions;
+//	private bool needUpdateMarbleWorldPositions;
 
 	private Vector2 originOffset = new Vector2 (0, 0);
 	private Vector2[,] tilePositions;
@@ -107,7 +107,7 @@ public class BoardManager : MonoBehaviour {
 
 		Vector2 position = tilePositions [xIndex, yIndex];
 		GameObject newMarbleObject = Instantiate(ObjectForMarbleType (type), new Vector3(position.x, position.y, 0), Quaternion.identity);
-		marbles [xIndex, yIndex] = new Marble (type, newMarbleObject);
+		marbles [xIndex, yIndex] = new Marble (type, newMarbleObject, new Position (xIndex, yIndex));
 		return true;
 	}
 
@@ -126,7 +126,17 @@ public class BoardManager : MonoBehaviour {
 		}
 	}
 
-	void UpdateMarblePositionsAnimated () {
+	void UpdateMarblePositions () {
+		for (int y = 0; y < yBoardSize; y++) {
+			for (int x = 0; x < xBoardSize; x++) {
+				if (marbles [x, y] != null) {
+					marbles [x, y].position = new Position (x, y);
+				}
+			}
+		}
+	}
+
+	void UpdateMarbleWorldPositionsAnimated () {
 		for (int y = 0; y < yBoardSize; y++) {
 			for (int x = 0; x < xBoardSize; x++) {
 				if (marbles [x, y] != null) {
@@ -212,21 +222,92 @@ public class BoardManager : MonoBehaviour {
 		}
 
 		marbles = newMarbles;
-		needUpdateMarblePositions = true;
+		UpdateMarblePositions ();
+//		needUpdateMarbleWorldPositions = true;
 	}
 
 	void GravityChanged(GravityDirection newDirection) {
-
 		ApplyGravity (newDirection);
+		EliminateMarbleChains ();
 		AddMarble ();
+	}
+
+	// ##### Chain find logic #####
+
+	void EliminateMarbleChains () {
+
+		List<List<Marble>> calculatedChains = new List<List<Marble>> ();
+
+		Debug.Log ("searching for chains");
+
+		for (int y = 0; y < yBoardSize; y++) {
+			for (int x = 0; x < xBoardSize; x++) {
+				List<Marble> chain = new List<Marble> ();
+				bool [,] map = new bool [xBoardSize, yBoardSize];
+				CalculateChain (x, y, MarbleType.None, map, chain);
+				calculatedChains.Add (chain);
+			}
+		}
+
+		Debug.Log ("remove chains");
+
+		foreach (var chain in calculatedChains) {
+			if (chain.Count > 2) {
+				foreach (var marble in chain) {
+					Destroy (marble.marbleObject);
+					marbles [marble.position.x, marble.position.y] = null; 
+				}
+			}
+		}
+	}
+
+	void CalculateChain (int x, int y, MarbleType type, bool [,] map, List<Marble> chain) {
+//		Debug.Log ("checking marble at " + x.ToString () + " ; " + y.ToString () + " of type " + type.ToString () + "; chain length = " + chain.Count);
+
+		if (x < 0 || x > xBoardSize - 1 || y < 0 || y > yBoardSize - 1) {
+//			Debug.Log ("out of bounds at " + x.ToString () + " ; " + y.ToString ());
+			return;
+		}
+
+		Marble marble = marbles [x, y];
+		if (marble == null || map [x, y] == true) {
+//			Debug.Log ("no or checked marble at " + x.ToString () + " ; " + y.ToString ());
+			return;
+		}
+
+		map [x, y] = true;
+
+		MarbleType typeToCheck = type != MarbleType.None ? type : marble.type;
+
+		if (marble.type == typeToCheck) {
+			chain.Add (marble);
+			Debug.Log ("found next marble at " + x.ToString () + " ; " + y.ToString () 
+				+ " of type " + marble.type.ToString () 
+				+ "; chain length = " + chain.Count);
+		} else {
+//			Debug.Log ("wrong marble type at " + x.ToString () + " ; " + y.ToString () + ", type " + marble.type.ToString ());
+			return;
+		}
+
+		// up
+		CalculateChain (x, y + 1, typeToCheck, map, chain);
+
+		// right
+		CalculateChain (x + 1, y, typeToCheck, map, chain);
+
+		// down
+		CalculateChain (x, y - 1, typeToCheck, map, chain);
+
+		// left
+		CalculateChain (x - 1, y, typeToCheck, map, chain);
 	}
 
 	// Update is called once per frame
 	void Update () {
-		if (needUpdateMarblePositions) {
+//		if (needUpdateMarblePositions) {
 //			needUpdateMarblePositions = false;
-			UpdateMarblePositionsAnimated ();
-		}
+			UpdateMarbleWorldPositionsAnimated ();
+//		}
 	}
 
 	// ##### Controls #####
